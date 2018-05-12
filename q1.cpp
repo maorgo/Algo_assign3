@@ -37,9 +37,10 @@ list<int> ** parseNeighbors(string vertices_string, int vertices) {
 		//cout << neighbors << endl;
 
 		// Iterate each number in the string and create a node for each number
-		for (int i = startID + 1; i < endID; i++)
-			if (vertices_string[i] != ',' && vertices_string[i] != ' ')
+		for (int i = startID + 1; i < endID; i++) 
+			if (vertices_string[i] != ',' && vertices_string[i] != ' ') 
 				neighborsList[vertexIndex][0].push_back(vertices_string[i] - 48);
+
 		vertexIndex++;
 			
 		vertices_string = vertices_string.substr(endID + 1, vertices_string.length());
@@ -49,113 +50,82 @@ list<int> ** parseNeighbors(string vertices_string, int vertices) {
 	
 }
 
-int * getShortestPathsCounter2(list<int> ** neighbors, int numVertices, int startVertex) {
+int * getShortestPathsCounter(list<int> ** neighbors, int numVertices, int startVertex) {
 	// todo: Remember to add 1 to indices. Now vertices start at index 0 instead of 1.
 	int *minimalTrack = new int[numVertices], *trackCounter = new int[numVertices], currentVertex;
 	vertex **vertices = new vertex *[numVertices], *currentNode; 
-	// Create the vertices
+	// Create the vertices, Init the minimalTrack, trackCounter arrays
 	for (int i = 0; i < numVertices; i++) {
 		vertices[i] = new vertex(i);
+		minimalTrack[i] = NULL;
+		trackCounter[i] = 0;
+		
 	}
 
 	queue<int> neighbors_queue;
-	// Init the minimalTrack, trackCounter arrays
-	for (int i = 0; i < numVertices; i++) {
-		minimalTrack[i] = NULL;
-		trackCounter[i] = 0;
-	}
 
 	// Set the path size from start vertex to the start vertex as 0.
 	startVertex--;
 	minimalTrack[startVertex] = 0;
 	trackCounter[startVertex] = 1; 
-	
+	vertices[startVertex]->setColor(-1);
 
 	// Iterate over the start vertex neighbors
 	for (list<int>::iterator it = neighbors[startVertex]->begin(); it != neighbors[startVertex]->end(); it++) {
 		// Insert all start's vertex neighbors to the queue
-		if (vertices[*it-1]->getColor() == 0) {
-			neighbors_queue.push(*it-1);
-			vertices[*it-1]->setColor(1);
-		}
+		neighbors_queue.push(*it);
+		vertices[*it-1]->setColor(1);
+
 		// Update their value in the arrays
 		minimalTrack[*it-1] = 1;
 		trackCounter[*it-1] = 1;
 	}
 
 	// Iterate over all the neighbors, until the queue is empty (BFS)
+
 	while (!neighbors_queue.empty()) {
 		// Get next vertex
-		currentNode = vertices[neighbors_queue.front()];
+		currentNode = vertices[neighbors_queue.front() - 1];
+		if (neighbors_queue.front() == numVertices)
+			return trackCounter;
 		// If its already visited, move to the next vertex in the queue
-		if (currentNode->getColor() == -1)
+		if (currentNode->getColor() == -1) {
+			neighbors_queue.pop();
 			continue;
+		}
 
 		// This vertex needs to be processed
 		currentVertex = currentNode->getValue();
 
-		// If found a better path / its the first path visited
-		if (minimalTrack[currentVertex-1] + 1 < minimalTrack[currentVertex - 1] || minimalTrack[currentVertex - 1] == NULL) {
-			// set this path as the minimal track
-			minimalTrack[currentVertex - 1] = minimalTrack[currentVertex - 1] + 1;
-			trackCounter[currentVertex - 1] = 1;
+		// Go through its neighbors
+		for (list<int>::iterator it = neighbors[currentVertex]->begin(); it != neighbors[currentVertex]->end(); it++) {
+			if (!*it)
+				continue;
+			if (minimalTrack[currentVertex] + 1 < minimalTrack[*it - 1] || !minimalTrack[*it - 1]) {
+				minimalTrack[*it - 1] = minimalTrack[currentVertex] + 1;
+				if (trackCounter[currentVertex] > 1)
+					trackCounter[*it - 1] += trackCounter[currentVertex];
+				else
+					trackCounter[*it - 1] = 1;
+			}
+			else if (minimalTrack[*it - 1] == minimalTrack[currentVertex] + 1) {
+				if (trackCounter[currentVertex] == 1)
+					trackCounter[*it - 1] ++;
+				else
+					trackCounter[*it - 1] += trackCounter[currentVertex];
+			}
+
+			if (vertices[*it - 1]->getColor() == 0) {
+				vertices[*it - 1]->setColor(1);
+				neighbors_queue.push(*it);
+			}
+
 		}
-		// If found another vertex with the same length, increase the counter
-		else if (minimalTrack[currentVertex - 1] == minimalTrack[currentVertex - 1] + 1)
-			trackCounter[currentVertex - 1] += 1;
-		// Mark this vertex as "visited" and remove from queue
-		currentNode->setColor(-1);
+		vertices[currentVertex]->setColor(-1);
 		neighbors_queue.pop();
 
-		// Go through its neighbors
-		for (list<int>::iterator it = neighbors[currentVertex - 1]->begin(); it != neighbors[currentVertex - 1]->end(); it++) {
-
-			if (vertices[*it - 1] == 0) {
-				neighbors_queue.push(*it);
-				vertices[*it - 1]->setColor(1);
-			}
-
-		}
 	}
 	return trackCounter;
-}
-
-int * getShortestPathsCounter(list<int> ** neighbors, int numVertices, int startVertex) {
-	int *minimalTrack = new int[numVertices];
-	int *trackCounter = new int[numVertices];
-	// Init the minimalTrack, trackCounter arrays
-	for (int i = 0; i < numVertices; i++) {
-		minimalTrack[i] = NULL;
-		trackCounter[i] = 0;
-	}
-	startVertex--;
-	// Set the path size from start vertex to the start vertex as 0.
-	minimalTrack[startVertex] = 0;
-	trackCounter[startVertex] = 1;
-
-	for (int i = startVertex; i < numVertices; i++) {
-		// Iterate the list of neighbors for vertex i
-		for (list<int>::iterator iter = neighbors[i]->begin(); iter != neighbors[i]->end(); iter++) {
-			// If its the first time we arrive at the vertex, mark it as 1 with minimal distance of its father + 1
-			if (minimalTrack[*iter-1] == NULL && minimalTrack[i] != NULL) {
-				minimalTrack[*iter - 1] = minimalTrack[i] + 1;
-				if (trackCounter[i] > 1)
-					trackCounter[*iter - 1] += trackCounter[i];
-				else
-					trackCounter[*iter - 1] = 1;
-			}
-			else if (minimalTrack[*iter - 1] != NULL && minimalTrack[*iter - 1] == minimalTrack[i] + 1) {
-				if (trackCounter[i] < 2)
-					trackCounter[*iter - 1] += 1;
-				else
-					trackCounter[*iter - 1] += trackCounter[i];
-			}
-		}
-	}
-
-	return trackCounter;
-
-
 }
 
 void main() {
@@ -186,7 +156,7 @@ void main() {
 		cout << "Please enter the source node : " << fileName << endl;
 		cin >> sourceNode;
 		// Run the algorithm
-		distanceResults = getShortestPathsCounter2(neighborsList, numOfNodes, sourceNode);
+		distanceResults = getShortestPathsCounter(neighborsList, numOfNodes, sourceNode);
 		cout << "The output for v2 is:" << endl;
 		for (int i = 0; i < numOfNodes; i++) {
 			cout << i + 1 << ": " << distanceResults[i] << ", ";
